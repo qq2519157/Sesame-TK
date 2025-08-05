@@ -40,6 +40,13 @@ object Detector {
     external fun isEmbeddedNative(context: Context): Boolean
     external fun dangerous(context: Context)
 
+    external fun getRandomApi(key: Int): String
+    external fun getRandomEncryptData(key: Int): String
+
+    fun getApi(key: Int): String {
+        return getRandomApi(key)
+    }
+
     /**
      * 检测是否通过LSPatch运行
      */
@@ -94,3 +101,5 @@ object Detector {
     }
 
 }
+
+
