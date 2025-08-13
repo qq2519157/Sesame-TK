@@ -26,16 +26,16 @@ import fansirsqi.xposed.sesame.data.General
 import fansirsqi.xposed.sesame.data.RunType
 import fansirsqi.xposed.sesame.data.UIConfig
 import fansirsqi.xposed.sesame.data.ViewAppInfo
-import fansirsqi.xposed.sesame.data.ViewAppInfo.androidId
+import fansirsqi.xposed.sesame.data.ViewAppInfo.verifyId
 import fansirsqi.xposed.sesame.entity.UserEntity
 import fansirsqi.xposed.sesame.net.SecureApiClient
+import fansirsqi.xposed.sesame.newui.DeviceInfoCard
+import fansirsqi.xposed.sesame.newui.DeviceInfoUtil
 import fansirsqi.xposed.sesame.newui.WatermarkView
 import fansirsqi.xposed.sesame.util.AssetUtil
 import fansirsqi.xposed.sesame.util.Detector
 import fansirsqi.xposed.sesame.util.Detector.getRandomApi
 import fansirsqi.xposed.sesame.util.Detector.getRandomEncryptData
-import fansirsqi.xposed.sesame.util.DeviceInfoCard
-import fansirsqi.xposed.sesame.util.DeviceInfoUtil
 import fansirsqi.xposed.sesame.util.FansirsqiUtil
 import fansirsqi.xposed.sesame.util.Files
 import fansirsqi.xposed.sesame.util.Log
@@ -60,6 +60,7 @@ class MainActivity : BaseActivity() {
     private lateinit var oneWord: TextView
 
     private lateinit var c: SecureApiClient
+    private var userNickName: String = ""
 
     @SuppressLint("SetTextI18n", "UnsafeDynamicallyLoadedCode")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -81,7 +82,7 @@ class MainActivity : BaseActivity() {
                 primary = Color(0xFF3F51B5), onPrimary = Color.White, background = Color(0xFFF5F5F5), onBackground = Color.Black
             )
             MaterialTheme(colorScheme = customColorScheme) {
-                DeviceInfoCard(DeviceInfoUtil.getDeviceInfo(this@MainActivity))
+                DeviceInfoCard(DeviceInfoUtil.showInfo(verifyId))
             }
         }
         // 获取并设置一言句子
@@ -105,7 +106,7 @@ class MainActivity : BaseActivity() {
         c = SecureApiClient(baseUrl = getRandomApi(0x22), signatureKey = getRandomEncryptData(0xCF))
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
-                c.secureVerify(deviceId = androidId, path = getRandomEncryptData(0x9e))
+                c.secureVerify(deviceId = verifyId, path = getRandomEncryptData(0x9e))
             }
             Log.runtime("verify result = $result")
             ToastUtil.makeText("${result?.optString("message")}", Toast.LENGTH_SHORT).show()
@@ -116,9 +117,11 @@ class MainActivity : BaseActivity() {
 
                 101, 100 -> {
                     ViewAppInfo.veriftag = true
+                    userNickName = result.optJSONObject("data")?.optString("user").toString()
+                    updateSubTitle(RunType.LOADED.nickName)
                 }
-
             }
+
         }
 
     }
@@ -160,9 +163,8 @@ class MainActivity : BaseActivity() {
                 userEntityArray = arrayOf(null)
                 Log.printStackTrace(e)
             }
+            updateSubTitle(RunType.LOADED.nickName)
         }
-        updateSubTitle(RunType.LOADED.nickName)
-
     }
 
     fun onClick(v: View) {
@@ -198,7 +200,8 @@ class MainActivity : BaseActivity() {
             }
 
             R.id.one_word -> {
-                oneWord.text = "😡 正在获取句子，请稍后……"
+                oneWord.text = "正在获取句子，请稍后……"
+
                 lifecycleScope.launch {
                     val result = FansirsqiUtil.getOneWord()
                     oneWord.text = result
@@ -345,7 +348,8 @@ class MainActivity : BaseActivity() {
         }
     }
 
-    private fun showSelectionDialog(title: String?, options: Array<String>, onItemSelected: Consumer<Int>, negativeButtonText: String?, onNegativeButtonClick: Runnable, showDefaultOption: Boolean
+    private fun showSelectionDialog(
+        title: String?, options: Array<String>, onItemSelected: Consumer<Int>, negativeButtonText: String?, onNegativeButtonClick: Runnable, showDefaultOption: Boolean
     ) {
         val latch = CountDownLatch(1)
         val dialog = StringDialog.showSelectionDialog(this, title, options, { dialog1: DialogInterface, which: Int ->
@@ -398,8 +402,7 @@ class MainActivity : BaseActivity() {
     }
 
     fun updateSubTitle(runType: String) {
-        Log.runtime(TAG, "updateSubTitle$runType")
-        baseTitle = ViewAppInfo.appTitle + "[" + runType + "]"
+        baseTitle = ViewAppInfo.appTitle + "[" + runType + "]" + userNickName
         when (runType) {
             RunType.DISABLE.nickName -> setBaseTitleTextColor(
                 ContextCompat.getColor(
